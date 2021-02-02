@@ -5,10 +5,13 @@
 #ifndef STEPPER_H
 #define STEPPER_H
 
+#ifndef _STDBOOL_H
+#include <stdbool.h>
+#endif
+
 /*
 REQUIRES:
 #include <avr/io.h>
-#include <stdbool.h>
 #include "Time.h"
 */
 
@@ -65,8 +68,8 @@ void set_speed(uint8_t i, float speed);
 #if 0
 EXAMPLE OF USE:
 
-add_stepper(&PORTB, PB6, PB7, 4, 1.8);		// stepper index = 0	
-add_stepper(&PORTB, PB1, PB2, 4, 1.8);		// stepper index = 1	
+add_stepper(&PORTB, PB6, PB7, 1.8);		// stepper index = 0	
+add_stepper(&PORTB, PB1, PB2, 1.8);		// stepper index = 1	
 
 float angles[] = {30, 90};			// stepper 0 angle = 30, stepper 1 angle = 90
 

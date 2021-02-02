@@ -59,7 +59,7 @@ uint8_t add_stepper(volatile uint8_t *port, uint8_t step_pin, uint8_t dir_pin, f
 	return(++g_stepper_count);	// Increment and return number of motors initialized so far	
 }
 
-uint32_t motion(const int32_t angles[]) {
+uint32_t motion(const float angles[]) {
 	float longest_time = 0.0;
 	uint8_t i;
 	for (i = 0; i < g_stepper_count; i++) {
@@ -81,7 +81,7 @@ uint32_t motion(const int32_t angles[]) {
 		// Work out a new interval for each stepper so they will all 
 		// arrived at the same time of longest_time
 		for (i = 0; i < g_stepper_count; i++) {
-			if (steps[i] == 0) steppers[i].interval = longest_time;
+			if (steppers[i].steps == 0) steppers[i].interval = longest_time;
 			else steppers[i].interval = longest_time / (2.0 * steppers[i].steps);
 		}
 	}
@@ -137,7 +137,7 @@ void reverse_direction(uint8_t index, bool reverse) {
 void set_stepping(uint8_t index, uint8_t stepping) {
 	if (g_stepper_count < index) return;			// Such stepper not initialized, exit function
 	if (stepping < 1) stepping = 1;				// Minimum stepping value is 1
-	steppers[index].deg_per_step = deg_per_step / stepping;	// Recalculates degrees per one step
+	steppers[index].deg_per_step /= stepping;	// Recalculates degrees per one step
 }
 
 void set_speed(uint8_t index, float speed) { 	// speed in deg/s
