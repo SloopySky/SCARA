@@ -45,7 +45,9 @@ unless all steppers reach their target positions.
 void run(void);
 
 /*
-reverse_direction() function changes CW and CCW directions for the particular motor
+reverse_direction() function changes CW and CCW directions of the particular motor
+For example, direction should be reversed to keep CW and CCW 
+after placing the motor upside down.
 Arguments:
 * index - number of stepper motor
 * reverse - True replaces directions, False restores

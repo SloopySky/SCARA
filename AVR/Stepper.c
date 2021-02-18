@@ -17,10 +17,20 @@
 #define CCW				-1
 
 /*
+bool step() function generates square wave in order to execute steps.
+It is realized by changing state of the step_pin of each motor,
+after passage of the interval time.
+Returns true if at least one motor isn't on its target position,
+false if all steppers reached their target positions.
 */
 static bool step(void);
 
 /*
+set_direction() function sets the dir_pin state of the particular motor
+to value that corresponds with the dir argument (CW or CCW).
+Arguments:
+* index - number of stepper motor
+* dir - rotation direction (CW or CCW)
 */
 static void set_direction(uint8_t index, int8_t dir);
 
