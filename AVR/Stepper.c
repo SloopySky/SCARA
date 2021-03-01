@@ -10,7 +10,7 @@
 #define MAX_STEPPERS			5
 
 // Default value of field max_speed in deg/s
-#define MAX_SPEED_DEFAULT 		10
+#define MAX_SPEED_DEFAULT 		50
 
 // Directions ClockWise and CounterClockWise
 #define CW		 		 1
@@ -39,10 +39,10 @@ struct Stepper {
 	uint8_t step_pin;
 	uint8_t dir_pin;
 	bool reverse_direction;		// Set True to reverse direction
-	uint32_t steps;			// [steps]
-	float deg_per_step;		// [deg/step]
-	float max_speed;		// [steps/us]
-	float interval;			// [us]
+	uint32_t steps;				// [steps]
+	float deg_per_step;			// [deg/step]
+	float max_speed;			// [steps/us]
+	float interval;				// [us]
 	uint32_t last_step_time;	// [us]
 } steppers[MAX_STEPPERS];
 
@@ -52,7 +52,7 @@ uint8_t add_stepper(volatile uint8_t *port, uint8_t step_pin, uint8_t dir_pin, f
 	if (!g_stepper_count) init_time();
 	
 	if (deg_per_step <= 0.0) deg_per_step = 1.0;		// deg_per_step is a physical factor, 
-								// must be greater than 0 
+														// must be greater than 0 
 	steppers[g_stepper_count].port = port;		
 	steppers[g_stepper_count].step_pin = step_pin;
 	steppers[g_stepper_count].dir_pin = dir_pin;
@@ -64,7 +64,7 @@ uint8_t add_stepper(volatile uint8_t *port, uint8_t step_pin, uint8_t dir_pin, f
 
 	// Enable outputs
 	DDR(steppers[g_stepper_count].port) |= (1 << steppers[g_stepper_count].step_pin) \
-					    |  (1 << steppers[g_stepper_count].dir_pin);
+					    				|  (1 << steppers[g_stepper_count].dir_pin);
 
 	return(++g_stepper_count);	// Increment and return number of motors initialized so far	
 }
@@ -134,9 +134,9 @@ static void set_direction(uint8_t index, int8_t dir) {
 	if (steppers[index].reverse_direction) dir = -dir;
 
 	if (dir == CW)
-		PORT(steppers[index].port) |= (1 << steppers[index].dir_pin);
-	if (dir == CCW)
 		PORT(steppers[index].port) &= ~(1 << steppers[index].dir_pin);
+	if (dir == CCW)
+		PORT(steppers[index].port) |= (1 << steppers[index].dir_pin);
 }
 
 void reverse_direction(uint8_t index, bool reverse) {
@@ -145,14 +145,20 @@ void reverse_direction(uint8_t index, bool reverse) {
 }
 
 void set_stepping(uint8_t index, uint8_t stepping) {
-	if (g_stepper_count < index) return;			// Such stepper not initialized, exit function
+	if (g_stepper_count < index) return;		// Such stepper not initialized, exit function
 	if (stepping < 1) stepping = 1;				// Minimum stepping value is 1
-	steppers[index].deg_per_step /= stepping;	// Recalculates degrees per one step
+	
+	// Recalculate degrees per one step:
+	steppers[index].deg_per_step = steppers[index].deg_per_step / stepping;
+	
+	// Recalculate speed:
+	set_speed(index, MAX_SPEED_DEFAULT);
 }
 
-void set_speed(uint8_t index, float speed) { 	// speed in deg/s
-	if (g_stepper_count < index) return;	// Such stepper not initialized, exit function
-	if (speed < 0) steppers[index].max_speed = 0.0;	// Speed can't be nagative
+void set_speed(uint8_t index, float speed) { 			// speed in deg/s
+	if (g_stepper_count < index) return;				// Such stepper not initialized, exit function	
+	if (speed < 0) steppers[index].max_speed = 0.0;		// Speed can't be nagative
+	
 	// Convert deg/s to steps/us and store value:
 	else steppers[index].max_speed = speed / (1000000.0 * steppers[index].deg_per_step);
 }
