@@ -1,8 +1,0 @@
-W roku 2019 ukończyłem z wyróżnieniem studia inzynierskie na kierunku Automatyka i Robotyka.
-Od czterech lat z powodzeniem pracuję na stanowisku programisty CNC w firmie Grupa Kęty S.A.,
-przyczyniając się do ciągłego usprawniania procesów technologicznych.
-Naukę języka C/C++ rozpocząłem w technikum. Programowania mikrokontrolerów
-nauczyłem się wykonując projekty studenckie oraz realizując własne pomysły.
-Aplikuję na stanowisko ... w firmie ..., aby pracując z nowoczesnymi technologiami 
-móc rozwijać swoją pasję do programowania.
-
