@@ -40,6 +40,11 @@ If so, receives it and returns
 uint8_t receive_byte(void);
 
 /*
+Flushes data that remains in the receive buffer
+*/
+void flush(void);
+
+/*
 Sends char array str[] char by char to USART,
 until '\r' char (Enter) is received or max_length is reached
 */

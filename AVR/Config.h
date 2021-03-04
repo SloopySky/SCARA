@@ -1,5 +1,6 @@
 /***** CONNECTIONS TO AVR *****/
-#define ENDSTOP				PD2
+#define ENDSTOP_PORT			PORTD
+#define ENDSTOP_PIN			PD2
 
 #define Z_PORT				PORTB
 #define Z_STEP				PB6

@@ -1,10 +1,8 @@
 #include <avr/io.h>
 #include <stdbool.h>
 #include "Time.h"
+#include "Port.h"
 #include "Stepper.h"
-
-#define PORT(x) (*x)		// Pin state register (HIGH or LOW)
-#define DDR(x) (*(x - 1))	// Data Direction Register (input or output)
 
 // Max number of steppers
 #define MAX_STEPPERS			5

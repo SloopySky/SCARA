@@ -5,10 +5,6 @@
 
 #define BAUD_PRESCALE ((F_CPU / (BAUD * 16UL)) - 1) 
 
-#define   USART_HAS_DATA   bit_is_set(UCSR0A, RXC0)
-#define   USART_READY      bit_is_set(UCSR0A, UDRE0)
-
-
 void init_USART(void) {
 	// Set BAUD rate:
 	UBRR0H = (BAUD_PRESCALE >> 8);
@@ -28,16 +24,21 @@ void init_USART(void) {
 
 void transmit_byte(uint8_t data) {
 	// Wait for empty transmit buffer:
-	loop_until_bit_is_set(UCSR0A, UDRE0);
+	while (!(UCSR0A & (1<<UDRE)));
 	// Send data:
 	UDR0 = data;
 }
 
 uint8_t receive_byte(void) {
 	// Wait for incoming data:
-	loop_until_bit_is_set(UCSR0A, RXC0);
+	while (!(UCSR0A & (1<<RXC)));
 	// Return register value:
 	return UDR0;
+}
+
+void flush(void) {
+	char trash;
+	while (UCSR0A & (1<<RXC)) trash = UDR0;
 }
 
 void print_string(const char str[]) {
