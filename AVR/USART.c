@@ -24,21 +24,21 @@ void init_USART(void) {
 
 void transmit_byte(uint8_t data) {
 	// Wait for empty transmit buffer:
-	while (!(UCSR0A & (1<<UDRE)));
+	while (!(UCSR0A & (1<<UDRE0)));
 	// Send data:
 	UDR0 = data;
 }
 
 uint8_t receive_byte(void) {
 	// Wait for incoming data:
-	while (!(UCSR0A & (1<<RXC)));
+	while (!(UCSR0A & (1<<RXC0)));
 	// Return register value:
 	return UDR0;
 }
 
 void flush(void) {
 	char trash;
-	while (UCSR0A & (1<<RXC)) trash = UDR0;
+	while (UCSR0A & (1<<RXC0)) trash = UDR0;
 }
 
 void print_string(const char str[]) {
