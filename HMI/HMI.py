@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-import SCARA
-# import Communication
+from SCARA import Scara
 
 
 # ******************** Custom widgets: ********************
@@ -18,11 +17,10 @@ class Title(tk.Label):
 
 
 class MovePanel(tk.Frame):
-    def __init__(self, master=None, name=None, scara=None, display_function=None):
+    def __init__(self, master=None, name=None, scara=None):
         tk.Frame.__init__(self, master)
         self.name = name
         self.scara = scara
-        self.display_function = display_function
         self.step_size = 0
         self.is_pressed = False
 
@@ -40,53 +38,53 @@ class MovePanel(tk.Frame):
                                    width=2)
         self.axis_label.grid(column=1, row=0, ipadx=10, ipady=5)
 
-        # Position label:
-        self.position_label = tk.Label(self,
-                                       font='none 16 bold',
-                                       bg='white',
-                                       width=10,
-                                       padx=10)
-        self.position_label.grid(column=2, row=0, ipady=5)
+        # Current position label:
+        self.current_position_label = tk.Label(self,
+                                               font='none 16 bold',
+                                               bg='white',
+                                               width=6,
+                                               padx=10)
+        self.current_position_label.grid(column=2, row=0, ipady=5)
+
+        # Displacement label:
+        self.displacement_label = tk.Label(self,
+                                           font='none 16 bold',
+                                           bg='white',
+                                           width=6,
+                                           padx=10)
+        self.displacement_label.grid(column=3, row=0, ipady=5)
 
         # Increment button:
         self.inc_icon = tk.PhotoImage(file="Icons/positive.png")
         self.inc_button = tk.Label(self, image=self.inc_icon)
-        self.inc_button.grid(column=3, row=0)
+        self.inc_button.grid(column=4, row=0)
         self.inc_button.bind("<ButtonRelease-1>", lambda event: self.button_released())
 
-    def step(self, direction):
-        # if is XYZ Panel:
-        if self.name in self.scara.cartesian_names:
-            displacement = dict.fromkeys(self.scara.cartesian_names, 0)
-            displacement[self.name] = direction * self.step_size
-            displacement = self.scara.inverse_kinematics(displacement, self.scara.G91)
-        # if is Axes Panel:
-        elif self.name in self.scara.axes_names:
-            displacement = dict.fromkeys(self.scara.axes_names, 0)
-            displacement[self.name] = direction * self.step_size
-        else:
-            return
-        self.scara.move(displacement, self.scara.G91)  # Run function
-        self.display_function()
+    def step(self, step):
+        is_absolute = self.scara.gcode.is_absolute
+        line = "G91" + self.name
+        if self.name[0] is 'A':
+            line = line + "="
+        line = line + str(step)
+        self.scara.gcode.operate(line)
+        self.scara.gcode.is_absolute = is_absolute
 
     def button_pressed(self, direction):
         self.is_pressed = True
-        print("PRESSED")
         # while self.is_pressed:
         #     self.step(direction)
 
     def button_released(self):
         self.is_pressed = False
-        print("RELEASED")
         # interrupt
 
     def continuous(self):
-        self.dec_button.bind("<Button-1>", lambda event, d=-1: self.button_pressed(d))
-        self.inc_button.bind("<Button-1>", lambda event, d=1: self.button_pressed(d))
+        self.dec_button.bind("<Button-1>", lambda event, d=-self.step_size: self.button_pressed(d))
+        self.inc_button.bind("<Button-1>", lambda event, d=self.step_size: self.button_pressed(d))
 
     def single(self):
-        self.dec_button.bind("<Button-1>", lambda event, d=-1: self.step(d))
-        self.inc_button.bind("<Button-1>", lambda event, d=1: self.step(d))
+        self.dec_button.bind("<Button-1>", lambda event, d=-self.step_size: self.step(d))
+        self.inc_button.bind("<Button-1>", lambda event, d=self.step_size: self.step(d))
 # *********************************************************
 
 
@@ -94,7 +92,7 @@ class Application:
     def __init__(self, master=None):
         self.master = master
         self.master.title("SCARA HMI")
-        self.scara = SCARA.Scara()
+        self.scara = Scara()
 
         # ******************* Create tabs *********************
         self.notebook = ttk.Notebook(self.master, padding=5)
@@ -123,6 +121,10 @@ class Application:
         self.zero_point_label = Title(self.tabs[name], text='Active zero point: Global')
         self.zero_point_label.grid(column=0, row=0, columnspan=3, sticky='EW')
 
+        # Feed (top):
+        self.feed_label = Title(self.tabs[name], text='Feed: ')
+        self.feed_label.grid(column=2, row=0, sticky='E')
+
         # Current position graphics (left):
         self.img = tk.PhotoImage(file="pybot.png")
         self.position_label = tk.Label(self.tabs[name], image=self.img)
@@ -140,14 +142,14 @@ class Application:
         # MDI:
         self.mdi_label = Title(self.control_frame, text='MDI:')
         self.mdi_label.grid(column=0, row=0, columnspan=2, sticky='EW', pady=5)
-        self.text_field = tk.Text(self.control_frame, width=41, height=6, padx=5)
+        self.text_field = tk.Text(self.control_frame, width=55, height=6, padx=5)
         self.text_field.grid(column=0, row=1, columnspan=2)
         self.master.bind("<Return>", self.start_mdi)
 
         # Step size change:
         self.step_size_frame = tk.Frame(self.control_frame)
         self.step_size_frame.grid(column=0, row=2, sticky='W')
-        self.step_size_label = Title(self.step_size_frame, width=16, text='Step size:')
+        self.step_size_label = Title(self.step_size_frame, width=22, text='Step size:')
         self.step_size_label.grid(column=0, row=0, pady=5)
         self.step_size = tk.DoubleVar()
         self.step_size_radio = [0, 0.1, 1, 10]
@@ -165,44 +167,37 @@ class Application:
         # Gripper:
         self.gripper_state = 0
         self.gripper_frame = tk.Frame(self.control_frame)
-        self.gripper_frame.grid(column=1, row=2, sticky='N')
-        self.gripper_label = Title(self.gripper_frame, width=16, text='Gripper:')
-        self.gripper_label.grid(column=0, row=0, sticky='EW', pady=5)
+        self.gripper_frame.grid(column=1, row=2, sticky='NE')
+        self.gripper_label = Title(self.gripper_frame, width=22, text='Gripper:')
+        self.gripper_label.grid(column=0, row=0, pady=5)
         self.gripper_active = tk.PhotoImage(file="Icons/Active.png")
         self.gripper_inactive = tk.PhotoImage(file="Icons/Inactive.png")
         self.gripper_button = tk.Label(self.gripper_frame, image=self.gripper_inactive)
-        self.gripper_button.grid(column=0, row=1)
+        self.gripper_button.grid(column=0, row=1, sticky='W')
         self.gripper_button.bind("<Button-1>", self.gripper_onoff)
 
-        self.subpanels = {}
-
-        # XYZ control:
+        # Control panels:
         self.xyz_panel = tk.Frame(self.axis_frame)
-        self.xyz_panel.grid(column=0, row=0, padx=30, pady=20)
-
-        for key, i in zip(self.scara.cartesian_names, range(len(self.scara.axes_names))):
-            self.subpanels[key] = MovePanel(self.xyz_panel,
-                                            name=key,
-                                            scara=self.scara,
-                                            display_function=self.display_pos)
-            self.subpanels[key].grid(column=0, row=i)
-
-        # Axes control:
+        self.xyz_panel.grid(column=0, row=0, padx=15, pady=20)
         self.axes_panel = tk.Frame(self.axis_frame)
-        self.axes_panel.grid(column=1, row=0, padx=30, pady=20)
+        self.axes_panel.grid(column=1, row=0, padx=15, pady=20)
 
-        for key, i in zip(self.scara.axes_names, range(len(self.scara.axes_names))):
-            if key == "VERTICAL":
-                continue
-            self.subpanels[key] = MovePanel(self.axes_panel,
-                                            name=key,
-                                            scara=self.scara,
-                                            display_function=self.display_pos)
-            self.subpanels[key].grid(column=0, row=i)
-            self.subpanels[key].axis_label.configure(text='A' + str(i + 1))
+        self.subpanels = {}
+        keys = self.scara.coordinates_names + self.scara.axes_names
+        for key, i in zip(keys, range(len(keys))):
+            if i < 3:
+                j = i
+                self.subpanels[key] = MovePanel(self.xyz_panel,
+                                                name=key,
+                                                scara=self.scara)
+            else:
+                j = i - 3
+                self.subpanels[key] = MovePanel(self.axes_panel,
+                                                name=key,
+                                                scara=self.scara)
+            self.subpanels[key].grid(column=0, row=j)
 
         self.set_step_size()
-        self.display_pos()
 
         # ******************* Auto tab *********************
         name = "Auto"
@@ -243,23 +238,24 @@ class Application:
                                                      pady=5)
             self.menu_options[name].grid(column=0, row=i, pady=2)
 
-        # Contents:
-
     # ********************* Methods: ************************
     # Display current position in xyz and angles
-    def display_pos(self):
-        for key in self.scara.cartesian_names:
-            self.subpanels[key].position_label.configure(text=str(self.scara.xyz[key]))
+    def update_display(self):
+        self.feed_label.configure(text="Feed: " + "{:.2f}".format(self.scara.feed))
+        delta = '\u0394'
+        for key in self.scara.coordinates_names:
+            self.subpanels[key].current_position_label.configure(text=str(round(self.scara.current_xy[key], 1)))
+            self.subpanels[key].displacement_label.configure(text=delta + str(round(0.0, 1)))
         for key in self.scara.axes_names:
-            if key == "VERTICAL":
-                continue
-            self.subpanels[key].position_label.configure(text=str(self.scara.axes[key].current_position))
+            self.subpanels[key].current_position_label.configure(text=str(round(self.scara.current_position[key], 1)))
+            self.subpanels[key].displacement_label.configure(text=delta + str(round(self.scara.displacement[key], 1)))
 
     # MDI Cycle Start
     def start_mdi(self, event=None):
-        task = self.text_field.get("1.0", "end-2c")
+        line = self.text_field.get("1.0", "end-2c")
         self.text_field.delete("1.0", "end")
-        # Decode task...
+        print(line)
+        self.scara.gcode.operate(line)
 
     # Gripper ON/OFF:
     def gripper_onoff(self, event):
@@ -286,7 +282,16 @@ class Application:
                 panel.single()
 
 
+def s():
+    # If movement finished:
+    if app.scara.communication.is_ready():
+        app.scara.update_position()
+    app.update_display()
+    root.after(10, s)
+
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = Application(master=root)
+    s()
     root.mainloop()
