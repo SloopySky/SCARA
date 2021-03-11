@@ -1,4 +1,6 @@
-/***** CONNECTIONS TO AVR *****/
+// HARDWARE CONFIGURATION
+
+// Connections to AVR:
 #define ENDSTOP_PORT			PORTD
 #define ENDSTOP_PIN			PD2
 
@@ -18,12 +20,12 @@
 #define T_SERVO				PD5
 
 
-/***** Machine constants and parameters *****/
+// Machine constants and parameters:
 #define NUMBER_OF_AXES			4
 #define NUMBER_OF_STEPPERS		3
 
 
-/***** NAMES *****/
+// Names:
 #define Z				0
 #define ARM				1
 #define FOREARM				2
@@ -31,13 +33,6 @@
 #define GRIPPER
 
 
-/***** STEPPER MOTORS PARAMETERS *****/
+// Stepper motors parameters:
 #define STEPPING			4		// 1/4 step	
 #define DEG_PER_STEP			1.8		// deg/step	1 step --> 1.8 deg
-
-
-/***** REDUCTIONS *****/
-#define iz 				360/8		// Z Axis reduction 8 mm/rev screw pitch
-#define i1 				72.0/16.0	// Arm reduction 
-#define i21 				62.0/16.0	// Forearm reduction
-#define i22 				62.0/33.0	// Arm to Forearm superposition

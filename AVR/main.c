@@ -4,7 +4,6 @@
 #include <avr/io.h>
 #include <avr/power.h>
 #include <util/delay.h>
-#include <stdbool.h>
 #include "USART.h"
 #include "Stepper.h"
 #include "Config.h"
@@ -13,17 +12,15 @@
 
 // Function prototypes:
 void init_scara(void);
-void move(float values[]);
-void set_zero(void);
-void home(void);
-void set_feed(float f);
+void move(float displacement[]);
+void home(float step_size);
+void set_feed(float feed);
 void wait(float time_s);
 void menu(void);
 
 
 // Global variables:
-static bool is_initialized = 0;
-static float reductions[NUMBER_OF_AXES];
+static uint8_t is_initialized = 0;
 
 
 int main(void) {
@@ -39,10 +36,6 @@ int main(void) {
 
 // Function definitions:
 void init_scara(void) {
-	reductions[0] = iz;
-	reductions[1] = i1;
-	reductions[2] = i21*i22;
-
 	// Stepper motors initialization:
 	add_stepper(&Z_PORT, Z_STEP, Z_DIR, DEG_PER_STEP);
 	add_stepper(&ARM_PORT, ARM_STEP, ARM_DIR, DEG_PER_STEP);
@@ -60,41 +53,26 @@ void init_scara(void) {
 }
 
 void move(float displacement[]) {
-	// Store reductions values:
-	static const float superposition = i22;
-
-	// Recalculate displacement values
-	// taking into account reductions:
-	for (uint8_t i = 0; i < NUMBER_OF_STEPPERS; i++)
-		displacement[i] = displacement[i] * reductions[i];
-
-	// Forearm and arm motion superposition correction:
-	displacement[FOREARM] += displacement[ARM]/superposition;
-
 	motion(displacement);
 	run();
 }
 
 // Z axis homing procedure:
-void home_Z(void) {
+void home(float step_size) {
 	float displacement[NUMBER_OF_STEPPERS];
 	for (uint8_t i = 0; i < NUMBER_OF_STEPPERS; i++)
 		displacement[i] = 0;
-	displacement[Z] = -0.1 * reductions[Z];
+	displacement[Z] = step_size;
 
 	// Move Z downwards,
 	// until the endstop will trigger:
-	while(!((PIN(&ENDSTOP_PORT) & (1 << ENDSTOP_PIN)))) {
-		motion(displacement);
-		run();
-	}
+	while(!((PIN(&ENDSTOP_PORT) & (1 << ENDSTOP_PIN))))
+		move(displacement);
 }
 
-void set_feed(float speed) {
+void set_feed(float feed) {
 	for (uint8_t i = 0; i < NUMBER_OF_STEPPERS; i++)
-		set_speed(i, (speed * reductions[i]));
-	if (speed > 40.0)
-		set_speed(Z, (40.0 * reductions[Z]));
+		set_speed(i, feed);
 }	
 
 void wait(float time_s) {
@@ -133,7 +111,7 @@ void menu(void) {
 		
 		// Gripper On/Off:
 		case 'M': {
-			char on_off = receive_byte();
+			// char on_off = receive_byte();
 			// if (on_off == '3') // Close the gripper
 			// else if (on_off == '4') // Open the gripper
 			break;
@@ -148,7 +126,8 @@ void menu(void) {
 
 		// Home:
 		case 'H': {
-			home_Z();
+			float step_size = get_float();
+			home(step_size);
 			break;
 		}
 	}

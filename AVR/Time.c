@@ -40,3 +40,11 @@ void init_time(void) {				// Initialize 8-bit TC0
 	sei();					// Enable interrupt
 	is_initialized = 1;			// Initialization done
 }
+
+void reset_time(void) {
+	uint8_t oldSREG = SREG;
+	cli();
+	timer0_overflow_count = 0;
+	TCNT0 = 0;
+	SREG = oldSREG;
+}

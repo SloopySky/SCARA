@@ -15,13 +15,10 @@
 #define CCW				-1
 
 /*
-bool step() function generates square wave in order to execute steps.
-It is realized by changing state of the step_pin of each motor,
-after passage of the interval time.
-Returns true if at least one motor isn't on its target position,
-false if all steppers reached their target positions.
+square_wave() function generates square wave in order to execute steps.
+It is realized by changing state of the step_pin of each motor.
 */
-static bool step(void);
+static void square_wave(uint8_t index);
 
 /*
 set_direction() function sets the dir_pin state of the particular motor
@@ -67,7 +64,7 @@ uint8_t add_stepper(volatile uint8_t *port, uint8_t step_pin, uint8_t dir_pin, f
 	return(++g_stepper_count);	// Increment and return number of motors initialized so far	
 }
 
-uint32_t motion(const float angles[]) {
+uint32_t prepare_simultanuous(const float angles[]) {
 	float longest_time = 0.0;
 	uint8_t i;
 	for (i = 0; i < g_stepper_count; i++) {
@@ -89,42 +86,54 @@ uint32_t motion(const float angles[]) {
 		// Work out a new interval for each stepper so they will all 
 		// arrived at the same time of longest_time
 		for (i = 0; i < g_stepper_count; i++) {
-			if (steppers[i].steps == 0) steppers[i].interval = longest_time;
+			if (!steppers[i].steps) steppers[i].interval = longest_time;
 			else steppers[i].interval = longest_time / (2.0 * steppers[i].steps);
 		}
 	}
 	return longest_time;
 }
 
-static bool step(void) {
-	bool ret = false;	// Assume that all motors have finished
-	for (uint8_t i = 0; i < g_stepper_count; i++) {
-		if (steppers[i].steps) {
-			// There is at least one step to be performed
-			// Read current time in microseconds	
-			uint32_t time = micros();	
-    			if (time - steppers[i].last_step_time >= steppers[i].interval) {
-				// It's time to step
-				// Generate square wave
-				// If step pin state is high set it low
-				if (PORT(steppers[i].port) & (1 << steppers[i].step_pin)) {
-					PORT(steppers[i].port) &= ~(1 << steppers[i].step_pin);
-					steppers[i].steps--;	// Count steps on trailing edge
-				}
-				// If step pin state is low set it high
-				else PORT(steppers[i].port) |= (1 << steppers[i].step_pin);
-				// Remember time of this step
-				steppers[i].last_step_time = time;	 
-			}
-			ret = true;	// At least one motor hasn't finished yet
-		}
+void prepare_single(uint8_t index, float angle) {
+	stepper[index].steps = angle / steppers[index].deg_per_step;
+	stepper[index].interval = 1.0 / (2.0 * stepper[index].speed);
+}
+
+static void square_wave(uint8_t index) {
+	// Change step pin state:
+	PORT(steppers[index].port) ^= (1 << steppers[index].step_pin);
+
+	// Count steps on trailing edge:
+	if (steppers[index].steps > 0)
+		if (PORT(steppers[index].port) & (1 << steppers[index].step_pin))
+			steppers[index].steps--;
+}
+
+void step(uint8_t index) {
+	// Read current time in microseconds:
+	uint32_t time = micros();	
+    	if (time - steppers[index].last_step_time >= steppers[index].interval) {
+		// Time to make a step:
+		square_wave(index);
+		// Remember time of this step
+		steppers[index].last_step_time = time;	 
 	}
-	// Return true if at least one motor hasn't finished yet, otherwise false
-	return ret;
 }
 
 void run(void) {
-	while(step());	// Run motors until all of them arrive
+	bool all_arrived = false;
+	// Run motors until all of them arrive:
+	while(!all_arrived) {
+		// Assume that all steppers arrived:
+		all_arrived = true;
+		for (uint8_t i = 0; i < g_stepper_count; i++) {
+			if (steppers[i].steps) {
+				// There is at least one step to be performed,
+				// At least one motor hasn't finished yet:
+				all_arrived = false
+				step(i);
+			}
+		}
+	}
 }
 
 static void set_direction(uint8_t index, int8_t dir) {

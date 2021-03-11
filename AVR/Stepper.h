@@ -17,6 +17,8 @@ REQUIRES:
 #include "Port.h"
 */
 
+#define MAX_SPEED 1200 // Max speed of the motor [rpm]
+
 /*
 add_stepper() function initializes a stepper motor,
 writes addresses of hardware connections, sets default speed.

@@ -23,4 +23,8 @@ This number will overflow after approximately 70 minutes.
 */
 uint32_t micros(void);
 
+/*
+reset_time() function sets time counter value to zero.
+*/
+void reset_time(void);
 #endif
