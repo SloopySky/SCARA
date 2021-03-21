@@ -1,57 +1,42 @@
 import serial
+import serial.tools.list_ports as list_ports
 
 
 class Communication:
-    serial_port = None
-    is_connected = False
-
     # Serial defaults:
-    PORT = '/dev/ttyUSB0'
     BAUDRATE = 38400
     TIMEOUT = 0.1
     ENCODING = 'UTF-8'
 
+    serial_port = serial.Serial(baudrate=BAUDRATE,
+                                parity=serial.PARITY_NONE,
+                                stopbits=serial.STOPBITS_ONE,
+                                bytesize=serial.EIGHTBITS,
+                                timeout=TIMEOUT)
+
+    connected = False
     ready = False
 
-    def __init__(self):
-        self.serial_open()
+    buffer = []
 
-    def serial_config(self,
-                      port=PORT,
-                      baudrate=BAUDRATE,
-                      parity=serial.PARITY_NONE,
-                      stopbits=serial.STOPBITS_ONE,
-                      bytesize=serial.EIGHTBITS,
-                      timeout=TIMEOUT):
-        self.serial_port = serial.Serial()
-        self.serial_port.port = port
-        self.serial_port.baudrate = baudrate
-        self.serial_port.parity = parity
-        self.serial_port.stopbits = stopbits
-        self.serial_port.bytesize = bytesize
-        self.serial_port.timeout = timeout
-
-    def serial_open(self):
-        # If serial not configured yet
-        # initialize it with default parameters:
-        if not self.serial_port:
-            self.serial_config()
-
+    def serial_open(self, port=None):
         try:
+            self.serial_port.port = port
             self.serial_port.open()
             if self.serial_port.isOpen():
-                self.is_connected = True
+                self.connected = True
                 self.ready = True
                 self.serial_port.flush()
+                return True
             else:
                 raise
         except:
-            self.is_connected = False
-            print("Connection failed")
+            self.connected = False
+            return False
 
-    def is_ready(self):
+    def ready_check(self):
         # Try:
-        if not self.is_connected:
+        if not self.connected:
             return False
 
         if not self.ready:
@@ -61,19 +46,39 @@ class Communication:
                 # If '1' received port is ready
                 if ack is '1':
                     self.ready = True
-            self.serial_port.reset_input_buffer()
+            # self.serial_port.reset_input_buffer()
 
-        return self.ready
+    def connection_check(self):
+        if self.serial_port.isOpen():
+            self.connected = True
+        else:
+            self.connected = False
 
-    def send(self, packet):
+    def to_buffer(self, packet):
         # If packet is not a list:
         if not isinstance(packet, list):
             packet = [packet]
+        self.buffer.append(packet)
+        print(self.buffer)
+
+    def is_buffer_empty(self):
+        return not len(self.buffer)
+
+    def send(self):
+        if not self.connected:
+            return
+        if not self.ready:
+            return
 
         # Check if there is something to send in the buffer
-        if not len(packet):
+        if not len(self.buffer):
             # Nothing to send
             return
+
+        packet = self.buffer[0]
+        self.buffer.pop(0)
+        print("Packet: ")
+        print(packet)
 
         # Send packet:
         for value in packet:
@@ -82,3 +87,10 @@ class Communication:
 
         # Busy...:
         self.ready = False
+
+    @staticmethod
+    def get_devices():
+        devices = list_ports.comports()
+        for i in range(len(devices)):
+            devices[i] = devices[i].device
+        return devices
